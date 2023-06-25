@@ -3,15 +3,62 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "mysql_driver.h"
+#include "mysql_connection.h"
+#include "cppconn/statement.h"
+
 using namespace std;
+
+sql::mysql::MySQL_Driver *driver;
+sql::Connection *con;
+sql::Statement *stmt;
 
 
 void action(string json){
     if(json=="") return;
+
+    int comma,secondSemiColon;
+    string withoutBraces,first,last,id,quantity,value;
+
+    withoutBraces=json.substr(1,json.length()-2);
+    comma=withoutBraces.find_first_of(',');
+    first=withoutBraces.substr(0,comma);
+    last=withoutBraces.substr(comma+1);
+    id=first.substr(first.find_first_of(':')+1);
+    secondSemiColon=last.find_first_of(':');
+    quantity=last.substr(0,secondSemiColon);
+    value=last.substr(secondSemiColon+1);
+
+
+    // {id:papap,temper:31}
+
+    try{
+        stmt = con->createStatement();
+
+        // Perform an INSERT statement
+        std::string insertQuery = "INSERT INTO data (device_name, quantity, value) VALUES ('"+id+"', '"+quantity+"', '"+value+"')";
+        stmt->execute(insertQuery);
+    }
+    catch(sql::SQLException &e) {
+        cout << "MySQL Exception: " << e.what() << endl;
+    }
     cout<<json<<endl;
+    //cout<<withoutBraces<<endl;
+    //cout<<first<<endl;
+    //cout<<last<<endl;
 }
 
 int main() {
+    // Create a MySQL driver instance
+    driver = sql::mysql::get_mysql_driver_instance();
+
+    // Establish a connection to the MySQL server
+    con = driver->connect("tcp://127.0.0.1:3306", "root", "gnomegnome");
+
+    // Select the database to use
+    con->setSchema("calliope");
+
+
     // Open the serial port
     const char* port = "/dev/ttyACM0";  // Replace with your Arduino's port
     int serialPort = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
