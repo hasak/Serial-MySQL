@@ -48,7 +48,7 @@ void action(string json){
     //cout<<last<<endl;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     // Create a MySQL driver instance
     driver = sql::mysql::get_mysql_driver_instance();
 
@@ -60,7 +60,8 @@ int main() {
 
 
     // Open the serial port
-    const char* port = "/dev/ttyACM0";  // Replace with your Arduino's port
+    const char* port = argv[1]; //"/dev/ttyACM0";  // Replace with your Arduino's port
+    cerr<<"'"<<argv[1]<<"'"<<endl;
     int serialPort = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (serialPort == -1) {
         cerr << "Failed to open serial port." << endl;
