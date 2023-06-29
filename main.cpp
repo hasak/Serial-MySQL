@@ -20,7 +20,7 @@ void action(string json){
     int comma,secondSemiColon;
     string withoutBraces,first,last,id,quantity,value;
 
-    withoutBraces=json.substr(1,json.length()-2);
+    withoutBraces=json.substr(1,json.length()-2); // JSON-parser
     comma=withoutBraces.find_first_of(',');
     first=withoutBraces.substr(0,comma);
     last=withoutBraces.substr(comma+1);
@@ -43,9 +43,6 @@ void action(string json){
         cout << "MySQL Exception: " << e.what() << endl;
     }
     cout<<json<<endl;
-    //cout<<withoutBraces<<endl;
-    //cout<<first<<endl;
-    //cout<<last<<endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -60,7 +57,7 @@ int main(int argc, char *argv[]) {
 
 
     // Open the serial port
-    const char* port = argv[1]; //"/dev/ttyACM0";  // Replace with your Arduino's port
+    const char* port = argv[1]; //"/dev/ttyACM0";  // Get as argument instead of hardcode
     cerr<<"'"<<argv[1]<<"'"<<endl;
     int serialPort = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (serialPort == -1) {
@@ -68,15 +65,54 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Configure the serial port
+    // Sometimes Calliopes don't start transmitting data and
+    // opening port with different baud rate and closing it
+    // solves the issue
     struct termios tty;
     if (tcgetattr(serialPort, &tty) != 0) {
         cerr << "Error in tcgetattr." << endl;
         close(serialPort);
         return 1;
     }
-    cfsetispeed(&tty, B9600);  // Replace with your Arduino's baud rate
-    cfsetospeed(&tty, B9600);  // Replace with your Arduino's baud rate
+    cfsetispeed(&tty, B115200);  // baud rate
+    cfsetospeed(&tty, B115200);  // baud rate
+    tty.c_cflag |= (CLOCAL | CREAD);
+    tty.c_cflag &= ~CSIZE;
+    tty.c_cflag |= CS8;
+    tty.c_cflag &= ~PARENB;
+    tty.c_cflag &= ~CSTOPB;
+    tty.c_cflag &= ~CRTSCTS;
+    tty.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+    tty.c_iflag &= ~(IXON | IXOFF | IXANY | IGNBRK);
+    tty.c_oflag &= ~OPOST;
+    tty.c_cc[VMIN] = 0;
+    tty.c_cc[VTIME] = 10;  // Read timeout in deciseconds
+
+    if (tcsetattr(serialPort, TCSANOW, &tty) != 0) {
+        cerr << "Error in tcsetattr." << endl;
+        close(serialPort);
+        return 1;
+    }
+
+    close(serialPort);
+
+
+
+
+    serialPort = open(port, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    if (serialPort == -1) {
+        cerr << "Failed to open serial port." << endl;
+        return 1;
+    }
+
+    // Configure the serial port
+    if (tcgetattr(serialPort, &tty) != 0) {
+        cerr << "Error in tcgetattr." << endl;
+        close(serialPort);
+        return 1;
+    }
+    cfsetispeed(&tty, B9600);  // baud rate
+    cfsetospeed(&tty, B9600);  // baud rate
     tty.c_cflag |= (CLOCAL | CREAD);
     tty.c_cflag &= ~CSIZE;
     tty.c_cflag |= CS8;
@@ -104,8 +140,8 @@ int main(int argc, char *argv[]) {
         if (bytesRead > 0) {
             string data(buffer, bytesRead);
             for(int i=0;i<data.size();i++){
-                if(data[i]==10){ // enter
-                    action(json);
+                if(data[i]==10){ // Enter
+                    action(json); // Callback function on new line
                     json="";
                 }
                 else if(data[i]!=32){
